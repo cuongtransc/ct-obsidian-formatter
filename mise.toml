@@ -67,7 +67,26 @@ description = "Bump version in manifest and versions files"
 run = "node scripts/version-bump.mjs && git add manifest.json versions.json"
 
 [tasks.deploy]
-description = "Deploy build to a local Obsidian vault (prompts for path)"
+description = "Copy the built plugin (main.js, manifest.json, styles.css from dist/) into local Obsidian plugin folders. Runs build first; idempotent (overwrites), and fails loud if a target vault is missing."
 depends = ["build"]
-run = "node scripts/deploy.mjs"
-raw = true
+run = """
+set -eu
+plugin=".obsidian/plugins/ct-obsidian-formater"
+
+# Target vaults — one path per line. Add/remove freely; blank lines and
+# '#' comments are ignored. $HOME expands (heredoc delimiter is unquoted).
+while IFS= read -r vault; do
+  case "$vault" in ''|'#'*) continue ;; esac
+  [ -d "$vault" ] || { echo "deploy: vault not found: $vault" >&2; exit 1; }
+  dir="$vault/$plugin"
+  mkdir -p "$dir"
+  cp dist/main.js dist/manifest.json dist/styles.css "$dir/"
+  echo "deployed -> $dir"
+done <<EOF
+$HOME/Dev/PCT/11-Notes/ct-pkm
+$HOME/Notes/cr-notes
+$HOME/Notes/ct-books
+$HOME/Notes/ct-notes
+$HOME/Notes/t1-notes-ai
+EOF
+"""
