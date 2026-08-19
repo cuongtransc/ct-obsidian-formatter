@@ -16,7 +16,7 @@ outputs = ["node_modules/.package-lock.json"]
 run = "npm install"
 
 [tasks.clean]
-description = "Delete dist/ and node_modules for a clean rebuild"
+description = "Remove build output and installed deps (forces reinstall)"
 run = "rm -rf dist node_modules"
 
 # ─── Build ────────────────────────────────────────────────────────
@@ -37,7 +37,7 @@ run = "tsc -noEmit -skipLibCheck && node scripts/esbuild.config.mjs production"
 # ─── Quality ──────────────────────────────────────────────────────
 [tasks.typecheck]
 alias = "tc"
-description = "Static type check only (tsc -noEmit); no bundle, no tests"
+description = "Static type check only; no bundle, no tests"
 depends = ["install"]
 run = "tsc -noEmit -skipLibCheck"
 
@@ -57,7 +57,7 @@ depends = ["install"]
 run = "tsx --test tests/formatter.test.ts"
 
 [tasks.ci]
-description = "Lint + test (use this in CI pipelines)"
+description = "Lint + test - the must-pass gate"
 depends = ["lint", "test"]
 run = "echo 'CI checks passed.'"
 
