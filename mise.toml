@@ -10,25 +10,25 @@ NODE_ENV = "{{ env.NODE_ENV | default(value='development') }}"
 # ─── Setup ────────────────────────────────────────────────────────
 [tasks.install]
 alias = "i"
-description = "Install dependencies"
+description = "Install npm deps; auto-runs before build/test/lint/dev"
 sources = ["package.json", "package-lock.json"]
 outputs = ["node_modules/.package-lock.json"]
 run = "npm install"
 
 [tasks.clean]
-description = "Remove build artifacts"
+description = "Delete dist/ and node_modules for a clean rebuild"
 run = "rm -rf dist node_modules"
 
 # ─── Build ────────────────────────────────────────────────────────
 [tasks.dev]
 alias = "d"
-description = "Start dev build with file watcher"
+description = "esbuild watch: rebuild the bundle on every save"
 depends = ["install"]
 run = "node scripts/esbuild.config.mjs"
 
 [tasks.build]
 alias = "b"
-description = "Production build"
+description = "Type-check then bundle dist/main.js for release"
 depends = ["install"]
 sources = ["src/**/*.ts", "src/styles.css", "tsconfig.json", "scripts/esbuild.config.mjs"]
 outputs = ["dist/main.js"]
@@ -37,7 +37,7 @@ run = "tsc -noEmit -skipLibCheck && node scripts/esbuild.config.mjs production"
 # ─── Quality ──────────────────────────────────────────────────────
 [tasks.typecheck]
 alias = "tc"
-description = "TypeScript type check"
+description = "Static type check only (tsc -noEmit); no bundle, no tests"
 depends = ["install"]
 run = "tsc -noEmit -skipLibCheck"
 
@@ -67,7 +67,7 @@ description = "Bump version in manifest and versions files"
 run = "node scripts/version-bump.mjs && git add manifest.json versions.json"
 
 [tasks.deploy]
-description = "Copy the built plugin (main.js, manifest.json, styles.css from dist/) into local Obsidian plugin folders. Runs build first; idempotent (overwrites), and fails loud if a target vault is missing."
+description = "Build, then copy the plugin into local Obsidian vaults"
 depends = ["build"]
 run = """
 set -eu
