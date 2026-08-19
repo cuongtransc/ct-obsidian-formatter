@@ -36,6 +36,16 @@ export class FormatterSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
+			.setName('Merge split list markers')
+			.setDesc('Pull Gemini\'s bare "-" bullets back onto the same line as the content indented beneath them.')
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.mergeSplitListMarkers).onChange(async (value) => {
+					this.plugin.settings.mergeSplitListMarkers = value;
+					await this.plugin.saveSettings();
+				})
+			);
+
+		new Setting(containerEl)
 			.setName('Collapse blank lines')
 			.setDesc('Collapse runs of 3 or more blank lines into a single blank line.')
 			.addToggle((toggle) =>

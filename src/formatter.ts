@@ -19,6 +19,7 @@
 
 export interface FormatOptions {
 	rewriteGeminiCodeFences: boolean;
+	mergeSplitListMarkers: boolean;
 	collapseBlankLines: boolean;
 	trimTrailingWhitespace: boolean;
 	ensureTrailingNewline: boolean;
@@ -26,6 +27,7 @@ export interface FormatOptions {
 
 export const DEFAULT_FORMAT_OPTIONS: FormatOptions = {
 	rewriteGeminiCodeFences: true,
+	mergeSplitListMarkers: true,
 	collapseBlankLines: true,
 	trimTrailingWhitespace: true,
 	ensureTrailingNewline: true,
@@ -187,6 +189,85 @@ export function rewriteGeminiCodeFences(input: string): string {
 	return out.join('\n');
 }
 
+// A line that is *only* a list marker: optional indent, one bullet char
+// (`-`/`*`/`+`) or an ordered marker (`1.`/`2)`), then nothing but whitespace.
+// A thematic break (`---`, `***`) has more than one marker char and so is
+// excluded — the `[ \t]*$` won't match the trailing marker characters.
+const BARE_LIST_MARKER = /^([ \t]*)([-*+]|\d+[.)])[ \t]*$/;
+// Content that itself begins with a list marker — merging onto it would
+// produce a doubled bullet (`- - foo`), so we leave those alone.
+const LEADING_LIST_MARKER = /^([-*+]|\d+[.)])[ \t]/;
+
+/**
+ * Merges Gemini's split list markers back into normal list items.
+ *
+ * Gemini (via Obsidian's HTML→Markdown conversion) emits nested bullets as a
+ * bare marker on its own line, a blank line, then the item's content indented
+ * beneath it:
+ *
+ *     -
+ *
+ *         **Item:** body text.
+ *
+ * Obsidian renders that as an empty bullet followed by a detached, indented
+ * block. We pull the content up so it becomes a proper list item:
+ *
+ *     - **Item:** body text.
+ *
+ * The marker's own indentation is preserved (so nested markers stay nested),
+ * and the content's leading indentation is dropped. Fence-aware: a bare
+ * marker inside a code block is left untouched.
+ *
+ * A merge only happens when ALL of these hold, which keeps the transform from
+ * touching intentional Markdown:
+ *   - the marker line has no content of its own,
+ *   - at least one blank line separates it from the following content,
+ *   - the following non-blank line is indented strictly deeper than the marker
+ *     (i.e. it is the item's child content, not a sibling or heading),
+ *   - that content does not itself start with a list marker.
+ */
+export function mergeSplitListMarkers(input: string): string {
+	const lines = input.split('\n');
+	const out: string[] = [];
+	let fence: FenceState | null = null;
+	let i = 0;
+
+	while (i < lines.length) {
+		const line = lines[i];
+
+		if (fence === null) {
+			const m = line.match(BARE_LIST_MARKER);
+			if (m) {
+				const markerIndent = m[1].length;
+				// Skip the blank line(s) that separate the marker from its content.
+				let j = i + 1;
+				while (j < lines.length && lines[j].trim() === '') j++;
+				const consumedBlank = j > i + 1;
+				const content = j < lines.length ? lines[j] : null;
+				if (consumedBlank && content !== null) {
+					const contentIndent = content.length - content.replace(/^[ \t]+/, '').length;
+					const trimmed = content.trim();
+					if (
+						contentIndent > markerIndent &&
+						trimmed !== '' &&
+						!LEADING_LIST_MARKER.test(trimmed)
+					) {
+						out.push(`${m[1]}${m[2]} ${trimmed}`);
+						i = j + 1;
+						continue;
+					}
+				}
+			}
+		}
+
+		fence = updateFenceState(line, fence);
+		out.push(line);
+		i++;
+	}
+
+	return out.join('\n');
+}
+
 /**
  * Collapses runs of 3+ blank lines into a single blank line. Preserves
  * single and double blank lines (which carry semantic meaning in Markdown).
@@ -318,6 +399,7 @@ export function pastedSlice(
 export function format(input: string, options: FormatOptions = DEFAULT_FORMAT_OPTIONS): string {
 	let result = normalizeLineEndings(input);
 	if (options.rewriteGeminiCodeFences) result = rewriteGeminiCodeFences(result);
+	if (options.mergeSplitListMarkers) result = mergeSplitListMarkers(result);
 	if (options.collapseBlankLines) result = collapseBlankLines(result);
 	if (options.trimTrailingWhitespace) result = trimTrailingWhitespace(result);
 	if (options.ensureTrailingNewline) result = ensureTrailingNewline(result);

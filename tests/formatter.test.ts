@@ -8,6 +8,7 @@ import {
 	findImageWikilinks,
 	format,
 	formatPaste,
+	mergeSplitListMarkers,
 	normalizeLineEndings,
 	pastedSlice,
 	rewriteGeminiCodeFences,
@@ -148,6 +149,89 @@ describe('rewriteGeminiCodeFences', () => {
 	});
 });
 
+describe('mergeSplitListMarkers', () => {
+	test('merges a bare top-level marker with the indented block beneath it', () => {
+		const input = ['-', '', '    **Góc nhìn:** Bài học.'].join('\n');
+		assert.equal(mergeSplitListMarkers(input), '- **Góc nhìn:** Bài học.');
+	});
+
+	test('preserves indentation for nested split markers', () => {
+		const input = ['    -', '', '        **Thực thi:** Áp dụng.'].join('\n');
+		assert.equal(mergeSplitListMarkers(input), '    - **Thực thi:** Áp dụng.');
+	});
+
+	test('handles ordered-list markers', () => {
+		assert.equal(mergeSplitListMarkers('1.\n\n    First item.'), '1. First item.');
+		assert.equal(mergeSplitListMarkers('2)\n\n    Second item.'), '2) Second item.');
+	});
+
+	test('handles star and plus bullets', () => {
+		assert.equal(mergeSplitListMarkers('*\n\n    Star item.'), '* Star item.');
+		assert.equal(mergeSplitListMarkers('+\n\n    Plus item.'), '+ Plus item.');
+	});
+
+	test('leaves an inline list item untouched', () => {
+		const input = '- **Dịch sang:** Một trong những.';
+		assert.equal(mergeSplitListMarkers(input), input);
+	});
+
+	test('does not merge when the following content is not indented past the marker', () => {
+		// The next non-blank line is a sibling item, not this item's content.
+		const input = ['-', '', '- next item'].join('\n');
+		assert.equal(mergeSplitListMarkers(input), input);
+	});
+
+	test('does not merge when the content itself is a list marker (avoids "- -")', () => {
+		const input = ['-', '', '    - nested'].join('\n');
+		assert.equal(mergeSplitListMarkers(input), input);
+	});
+
+	test('does not merge a bare marker inside a fenced code block', () => {
+		const input = ['```', '-', '', '    still code', '```'].join('\n');
+		assert.equal(mergeSplitListMarkers(input), input);
+	});
+
+	test('requires a blank line between marker and content (no-op otherwise)', () => {
+		// A marker immediately followed by indented content is a normal lazy
+		// continuation, not the Gemini split-marker artifact.
+		const input = ['-', '    already fine'].join('\n');
+		assert.equal(mergeSplitListMarkers(input), input);
+	});
+
+	test('does not treat a thematic break (---) as a marker', () => {
+		const input = ['---', '', '    text'].join('\n');
+		assert.equal(mergeSplitListMarkers(input), input);
+	});
+
+	test('idempotent', () => {
+		const input = ['-', '', '    content here'].join('\n');
+		const once = mergeSplitListMarkers(input);
+		assert.equal(mergeSplitListMarkers(once), once);
+	});
+
+	test('reformats the full Gemini nested-list paste', () => {
+		const input = [
+			'### Bước 4: Chuyển đổi trạng thái',
+			'',
+			'-',
+			'',
+			'    **Góc nhìn Lịch sử:** Bài học từ sự linh hoạt.',
+			'',
+			'- **Dịch sang Kinh doanh:** Một trong những sai lầm.',
+			'',
+			'    -',
+			'',
+			'        **Thực thi:** Áp dụng nguyên lý.',
+		].join('\n');
+		const result = mergeSplitListMarkers(input);
+		assert.match(result, /^- \*\*Góc nhìn Lịch sử:\*\* Bài học từ sự linh hoạt\.$/m);
+		assert.match(result, /^- \*\*Dịch sang Kinh doanh:\*\* Một trong những sai lầm\.$/m);
+		assert.match(result, /^    - \*\*Thực thi:\*\* Áp dụng nguyên lý\.$/m);
+		// No bare markers left dangling on their own line.
+		assert.doesNotMatch(result, /^[ \t]*[-*+][ \t]*$/m);
+	});
+});
+
 describe('collapseBlankLines', () => {
 	test('collapses 3+ blank lines into one', () => {
 		assert.equal(collapseBlankLines('a\n\n\n\nb'), 'a\n\nb');
@@ -270,6 +354,7 @@ describe('format pipeline', () => {
 		const input = 'Bash\n\n```\nfoo\n```\n\n\n';
 		const result = format(input, {
 			rewriteGeminiCodeFences: false,
+			mergeSplitListMarkers: false,
 			collapseBlankLines: false,
 			trimTrailingWhitespace: false,
 			ensureTrailingNewline: false,
