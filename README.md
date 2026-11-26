@@ -2,6 +2,8 @@
 
 An Obsidian plugin that cleans up Markdown pasted from AI assistants — primarily **Gemini** — and applies light Markdown lint fixes.
 
+> **Plugin id changed** from `ct-obsidian-formater` to `ct-formatter`. Obsidian treats it as a new plugin: enable **CT Formatter** once per vault, copy `data.json` from the old `.obsidian/plugins/ct-obsidian-formater/` folder if you changed its settings, then delete that folder.
+
 ## What it fixes
 
 Gemini renders code blocks as a bare language label, a blank line, and an un-tagged fence:
@@ -55,7 +57,7 @@ The build emits `dist/main.js`, `dist/manifest.json`, and `dist/styles.css`.
 
 ### Installing into a vault
 
-Run `mise run ext:install`. It builds the plugin, then the shared `obsidian-plugin-install` helper copies `dist/*` into `<vault>/.obsidian/plugins/ct-obsidian-formater/` for each vault in its vault list (prompts `[y/N]`; `-n` dry run, `--vault PATH`, `-y`; see `obsidian-plugin-install --help`):
+Run `mise run ext:install`. It builds the plugin, then the shared `obsidian-plugin-install` helper copies `dist/*` into `<vault>/.obsidian/plugins/ct-formatter/` for each vault in its vault list (prompts `[y/N]`; `-n` dry run, `--vault PATH`, `-y`; see `obsidian-plugin-install --help`):
 
 ```bash
 mise run ext:install -- --vault PATH -y
