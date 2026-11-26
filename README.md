@@ -42,27 +42,24 @@ The formatter also runs automatically on paste when **Format on paste** is enabl
 ## Development
 
 ```bash
-mise run install     # install deps
 mise run dev         # esbuild watch mode → dist/main.js
 mise run build       # production build
 mise run typecheck   # tsc -noEmit
 mise run test        # node:test against src/formatter.ts
-mise run deploy      # build + install into a local Obsidian vault (prompts)
+mise run lint        # tsc + eslint
+mise run ci          # lint, test, build
+mise run ext:install # build + install into local Obsidian vaults (prompts)
 ```
 
 The build emits `dist/main.js`, `dist/manifest.json`, and `dist/styles.css`.
 
 ### Installing into a vault
 
-Run `mise run deploy`. The script will:
+Run `mise run ext:install`. It builds the plugin, then the shared `obsidian-plugin-install` helper copies `dist/*` into `<vault>/.obsidian/plugins/ct-obsidian-formater/` for each vault in its vault list (prompts `[y/N]`; `-n` dry run, `--vault PATH`, `-y`; see `obsidian-plugin-install --help`):
 
-1. Build the plugin (via the `build` task dependency).
-2. Prompt for an Obsidian vault path. `~` is expanded; the path must contain a `.obsidian/` directory.
-3. Copy `dist/*` into `<vault>/.obsidian/plugins/ct-obsidian-formater/`, creating the folder if needed.
-
-Vault paths you enter are remembered in `.deploy-vaults.json` (gitignored). On subsequent runs you can pick a saved vault by number, choose `a` to deploy to all of them, or `n` to add a new one.
-
-To install manually instead, copy `dist/` into `<your-vault>/.obsidian/plugins/ct-obsidian-formater/` and enable the plugin in Obsidian's community-plugin settings.
+```bash
+mise run ext:install -- --vault PATH -y
+```
 
 ### Project layout
 
@@ -78,7 +75,6 @@ tests/
 scripts/
   esbuild.config.mjs  Bundler config
   version-bump.mjs    Release helper
-  deploy.mjs          Interactive vault deployer (used by `mise run deploy`)
 ```
 
 `formatter.ts` is intentionally kept Obsidian-free so the logic can be unit-tested without spinning up a vault. `main.ts` is the only file that imports `obsidian`.

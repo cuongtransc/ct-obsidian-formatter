@@ -226,7 +226,7 @@ describe('mergeSplitListMarkers', () => {
 		const result = mergeSplitListMarkers(input);
 		assert.match(result, /^- \*\*Góc nhìn Lịch sử:\*\* Bài học từ sự linh hoạt\.$/m);
 		assert.match(result, /^- \*\*Dịch sang Kinh doanh:\*\* Một trong những sai lầm\.$/m);
-		assert.match(result, /^    - \*\*Thực thi:\*\* Áp dụng nguyên lý\.$/m);
+		assert.match(result, /^ {4}- \*\*Thực thi:\*\* Áp dụng nguyên lý\.$/m);
 		// No bare markers left dangling on their own line.
 		assert.doesNotMatch(result, /^[ \t]*[-*+][ \t]*$/m);
 	});

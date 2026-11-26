@@ -1,4 +1,7 @@
-min_version = "2026.2.18"
+min_version = "2026.9.0"
+
+[settings]
+experimental = true
 
 [tools]
 node = "24"
@@ -7,86 +10,49 @@ node = "24"
 _.path = ['{{config_root}}/node_modules/.bin']
 NODE_ENV = "{{ env.NODE_ENV | default(value='development') }}"
 
-# ─── Setup ────────────────────────────────────────────────────────
-[tasks.install]
-alias = "i"
-description = "Install npm deps; auto-runs before build/test/lint/dev"
-sources = ["package.json", "package-lock.json"]
-outputs = ["node_modules/.package-lock.json"]
-run = "npm install"
+[deps.npm]
+auto = true
+run = "npm ci"
 
-[tasks.clean]
-description = "Remove build output and installed deps (forces reinstall)"
-run = "rm -rf dist node_modules"
-
-# ─── Build ────────────────────────────────────────────────────────
 [tasks.dev]
-alias = "d"
-description = "esbuild watch: rebuild the bundle on every save"
-depends = ["install"]
+description = "Rebuild main.js on change while developing in a vault"
 run = "node scripts/esbuild.config.mjs"
 
 [tasks.build]
-alias = "b"
-description = "Type-check then bundle dist/main.js for release"
-depends = ["install"]
-sources = ["src/**/*.ts", "src/styles.css", "tsconfig.json", "scripts/esbuild.config.mjs"]
-outputs = ["dist/main.js"]
+description = "Produce the release bundle in dist/"
+sources = ["src/**/*.ts", "src/styles.css", "manifest.json", "tsconfig.json", "scripts/esbuild.config.mjs"]
+outputs = ["dist/main.js", "dist/manifest.json", "dist/styles.css"]
 run = "tsc -noEmit -skipLibCheck && node scripts/esbuild.config.mjs production"
 
-# ─── Quality ──────────────────────────────────────────────────────
+[tasks.test]
+description = "Run the formatter unit tests"
+run = "tsx --test tests/formatter.test.ts"
+
 [tasks.typecheck]
-alias = "tc"
-description = "Static type check only; no bundle, no tests"
-depends = ["install"]
+description = "Type-check without emitting; fastest signal after an edit"
 run = "tsc -noEmit -skipLibCheck"
 
 [tasks.lint]
-alias = "l"
-description = "Type-check + ESLint over src/ and tests/"
-depends = ["install"]
-run = """
-tsc -noEmit -skipLibCheck
-eslint src tests
-"""
+description = "ESLint over src/ and tests/ (read-only)"
+run = "eslint src tests"
 
-[tasks.test]
-alias = "t"
-description = "Run formatter unit tests"
-depends = ["install"]
-run = "tsx --test tests/formatter.test.ts"
+[tasks."ci:fast"]
+description = "Quick gate while working: types, lint, tests"
+run = ["mise run typecheck", "mise run lint", "mise run test"]
 
 [tasks.ci]
-description = "Lint + test - the must-pass gate"
-depends = ["lint", "test"]
-run = "echo 'CI checks passed.'"
+description = "Full gate before merge: types, lint, tests, bundle"
+run = ["mise run typecheck", "mise run lint", "mise run test", "mise run build"]
 
-# ─── Release ──────────────────────────────────────────────────────
-[tasks.version]
-description = "Bump version in manifest and versions files"
-run = "node scripts/version-bump.mjs && git add manifest.json versions.json"
+[tasks."ci:full"]
+description = "Same as ci; the repo has no slower suite"
+run = ["mise run typecheck", "mise run lint", "mise run test", "mise run build"]
 
-[tasks.deploy]
-description = "Build, then copy the plugin into local Obsidian vaults"
+[tasks.clean]
+description = "Remove build output and node_modules to force a fresh install"
+run = "rm -rf dist node_modules"
+
+[tasks."ext:install"]
+description = "Install the built plugin into this machine's Obsidian vaults"
 depends = ["build"]
-run = """
-set -eu
-plugin=".obsidian/plugins/ct-obsidian-formater"
-
-# Target vaults — one path per line. Add/remove freely; blank lines and
-# '#' comments are ignored. $HOME expands (heredoc delimiter is unquoted).
-while IFS= read -r vault; do
-  case "$vault" in ''|'#'*) continue ;; esac
-  [ -d "$vault" ] || { echo "deploy: vault not found: $vault" >&2; exit 1; }
-  dir="$vault/$plugin"
-  mkdir -p "$dir"
-  cp dist/main.js dist/manifest.json dist/styles.css "$dir/"
-  echo "deployed -> $dir"
-done <<EOF
-$HOME/Dev/PCT/11-Notes/ct-pkm
-$HOME/Notes/cr-notes
-$HOME/Notes/ct-books
-$HOME/Notes/ct-notes
-$HOME/Notes/t1-notes-ai
-EOF
-"""
+run = "obsidian-plugin-install"

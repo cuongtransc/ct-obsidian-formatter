@@ -58,7 +58,6 @@ playwright-report/
 # Obsidian plugin testing
 .obsidian/
 test-vault/
-.deploy-vaults.json
 
 tmp/
 
