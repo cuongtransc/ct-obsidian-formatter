@@ -1,5 +1,5 @@
 {
-	"name": "ct-obsidian-formater",
+	"name": "ct-formatter",
 	"version": "0.1.0",
 	"description": "Reformats notes pasted from Gemini and other AI assistants into clean Obsidian-flavored Markdown.",
 	"main": "dist/main.js",

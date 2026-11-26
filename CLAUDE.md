@@ -26,7 +26,7 @@ mise run typecheck   # tsc -noEmit
 mise run test        # node:test
 ```
 
-Built artifacts land in `dist/`. Copy that folder into `<vault>/.obsidian/plugins/ct-obsidian-formater/` to install locally.
+Built artifacts land in `dist/`. Install locally with `mise run ext:install`.
 
 ## Conventions
 

@@ -1,6 +1,6 @@
 {
-	"id": "ct-obsidian-formater",
-	"name": "CT Obsidian Formatter",
+	"id": "ct-formatter",
+	"name": "CT Formatter",
 	"version": "0.1.0",
 	"minAppVersion": "0.15.0",
 	"description": "Reformats notes pasted from Gemini and other AI assistants into clean Obsidian-flavored Markdown.",
